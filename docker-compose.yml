@@ -4,7 +4,6 @@ services:
   order-service:
     build:
       context: ./order-service
-    container_name: order-service
     environment:
       JAVA_TOOL_OPTIONS: >-
         -javaagent:/otel/opentelemetry-javaagent.jar
@@ -20,7 +19,7 @@ services:
       PAYMENT_BASE_URL: http://payment-service:8082
       INVENTORY_BASE_URL: http://inventory-service:8083
     ports:
-      - "8081:8081"
+      - "${ORDER_SERVICE_PORT:-8081}:8081"
     depends_on:
       - payment-service
       - inventory-service
@@ -29,7 +28,6 @@ services:
   payment-service:
     build:
       context: ./payment-service
-    container_name: payment-service
     environment:
       JAVA_TOOL_OPTIONS: >-
         -javaagent:/otel/opentelemetry-javaagent.jar
@@ -43,14 +41,13 @@ services:
         -Dotel.traces.sampler=always_on
         -Dotel.instrumentation.logback-mdc.enabled=true
     ports:
-      - "8082:8082"
+      - "${PAYMENT_SERVICE_PORT:-8082}:8082"
     depends_on:
       - tempo
 
   inventory-service:
     build:
       context: ./inventory-service
-    container_name: inventory-service
     environment:
       JAVA_TOOL_OPTIONS: >-
         -javaagent:/otel/opentelemetry-javaagent.jar
@@ -64,33 +61,30 @@ services:
         -Dotel.traces.sampler=always_on
         -Dotel.instrumentation.logback-mdc.enabled=true
     ports:
-      - "8083:8083"
+      - "${INVENTORY_SERVICE_PORT:-8083}:8083"
     depends_on:
       - tempo
 
   tempo:
     image: grafana/tempo:2.6.0
-    container_name: tempo
     command: ["-config.file=/etc/tempo.yaml"]
     volumes:
       - ./tempo/tempo.yaml:/etc/tempo.yaml:ro
     ports:
-      - "3200:3200"
-      - "4317:4317"
-      - "4318:4318"
+      - "${TEMPO_HTTP_PORT:-3200}:3200"
+      - "${TEMPO_OTLP_GRPC_PORT:-4317}:4317"
+      - "${TEMPO_OTLP_HTTP_PORT:-4318}:4318"
 
   loki:
     image: grafana/loki:3.0.0
-    container_name: loki
     command: ["-config.file=/etc/loki/loki-config.yaml"]
     volumes:
       - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
     ports:
-      - "3100:3100"
+      - "${LOKI_HTTP_PORT:-3100}:3100"
 
   promtail:
     image: grafana/promtail:3.0.0
-    container_name: promtail
     command: ["-config.file=/etc/promtail/promtail-config.yaml"]
     volumes:
       - ./promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro

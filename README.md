@@ -51,6 +51,27 @@ From repository root:
 docker compose up --build -d
 ```
 
+### Optional: avoid host port conflicts
+
+If another project already uses ports (for example Loki on `3100`), create a `.env` file in the repository root and override host ports:
+
+```dotenv
+ORDER_SERVICE_PORT=8081
+PAYMENT_SERVICE_PORT=8082
+INVENTORY_SERVICE_PORT=8083
+TEMPO_HTTP_PORT=3210
+TEMPO_OTLP_GRPC_PORT=4327
+TEMPO_OTLP_HTTP_PORT=4328
+LOKI_HTTP_PORT=3110
+```
+
+Then restart:
+
+```powershell
+docker compose down
+docker compose up --build -d
+```
+
 Check running containers:
 
 ```powershell
@@ -111,11 +132,11 @@ Add 2 data sources:
 
 1) Tempo
 - Type: Tempo
-- URL: `http://localhost:3200`
+- URL: `http://localhost:3200` (or your `TEMPO_HTTP_PORT` override)
 
 2) Loki
 - Type: Loki
-- URL: `http://localhost:3100`
+- URL: `http://localhost:3100` (or your `LOKI_HTTP_PORT` override)
 
 ### Logs to traces linking
 
