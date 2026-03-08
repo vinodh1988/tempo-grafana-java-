@@ -92,3 +92,40 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - loki
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=24h
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    depends_on:
+      - order-service
+      - payment-service
+      - inventory-service
+
+  load-generator:
+    image: curlimages/curl:8.8.0
+    profiles: ["load"]
+    environment:
+      LOAD_SLEEP_SECONDS: ${LOAD_SLEEP_SECONDS:-1}
+      LOAD_BATCH_SIZE: ${LOAD_BATCH_SIZE:-2}
+    command:
+      - sh
+      - -c
+      - |
+        i=1
+        while true; do
+          j=1
+          while [ "$j" -le "$LOAD_BATCH_SIZE" ]; do
+            curl -s -X POST "http://order-service:8081/orders/LOAD-$i-$j" > /dev/null || true
+            j=$((j+1))
+          done
+          i=$((i+1))
+          sleep "$LOAD_SLEEP_SECONDS"
+        done
+    depends_on:
+      - order-service

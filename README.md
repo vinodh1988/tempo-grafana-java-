@@ -1,181 +1,217 @@
-# Tempo + Loki Java Microservices POC (Docker Compose)
+# Tempo + Loki + Prometheus Java Microservices POC
 
-This repository contains a full local POC for distributed tracing and log analysis using:
-- 3 Java microservices (`order-service`, `payment-service`, `inventory-service`)
-- Grafana Tempo for traces
-- Grafana Loki for logs
-- Promtail for Docker log shipping
-- Docker Compose for end-to-end local execution (no Kubernetes)
+This repository is a Docker Compose POC for observability across multiple Java microservices.
 
-## Why this design fits your machine
+It includes:
+- Distributed traces in Tempo
+- Logs in Loki (shipped by Promtail)
+- Metrics from all Java services in Prometheus
+- Grafana-ready data source configuration (Grafana install not required)
 
-Your shared environment details:
-- Java: `11.0.28`
-- Maven: `3.3.9` (old)
+## Inter-service flow
 
-This POC avoids host Maven constraints by building each service inside Docker with:
-- `maven:3.9.9-eclipse-temurin-11` for build stage
-- `eclipse-temurin:11-jre` for runtime
+The call chain is implemented in code:
+- `order-service` receives `POST /orders/{orderId}`
+- `order-service` calls `payment-service` at `POST /payments/{orderId}`
+- `order-service` calls `inventory-service` at `POST /inventory/reserve/{orderId}`
 
-So you can run with Docker Compose directly, even if local Maven is outdated.
+This gives you one end-to-end trace that spans all services.
 
-## Architecture
+## What runs in Docker Compose
 
-1. Client calls `order-service` at `POST /orders/{orderId}`.
-2. `order-service` calls:
-- `payment-service` at `POST /payments/{orderId}`
-- `inventory-service` at `POST /inventory/reserve/{orderId}`
-3. OpenTelemetry Java agent auto-instruments HTTP calls and exports traces to Tempo.
-4. Services log with MDC trace keys (`trace_id`, `span_id`).
-5. Promtail reads Docker container logs and pushes them to Loki.
-6. Grafana links logs to traces via derived field.
+- `order-service`
+- `payment-service`
+- `inventory-service`
+- `tempo`
+- `loki`
+- `promtail`
+- `prometheus`
+- `load-generator` (optional profile)
 
-## Project structure
+## Metrics emission (all Java services)
 
-```text
-.
-|-- docker-compose.yml
-|-- tempo/tempo.yaml
-|-- loki/loki-config.yaml
-|-- promtail/promtail-config.yaml
-|-- order-service/
-|-- payment-service/
-`-- inventory-service/
+Each service now includes:
+- Spring Boot Actuator
+- `micrometer-registry-prometheus`
+- `management.endpoints.web.exposure.include=health,info,prometheus`
+
+Prometheus endpoints:
+- `order-service`: `http://order-service:8081/actuator/prometheus`
+- `payment-service`: `http://payment-service:8082/actuator/prometheus`
+- `inventory-service`: `http://inventory-service:8083/actuator/prometheus`
+
+Prometheus scrape config file:
+- `prometheus/prometheus.yml`
+
+## Port configuration
+
+Host ports are configurable via `.env` so they do not collide with other projects.
+
+Current `.env` defaults in this repo:
+
+```dotenv
+ORDER_SERVICE_PORT=18081
+PAYMENT_SERVICE_PORT=18082
+INVENTORY_SERVICE_PORT=18083
+TEMPO_HTTP_PORT=3200
+TEMPO_OTLP_GRPC_PORT=4317
+TEMPO_OTLP_HTTP_PORT=4318
+LOKI_HTTP_PORT=3110
+PROMETHEUS_PORT=19090
+LOAD_SLEEP_SECONDS=1
+LOAD_BATCH_SIZE=2
 ```
 
 ## Start the stack
 
-From repository root:
-
 ```powershell
 docker compose up --build -d
 ```
 
-### Optional: avoid host port conflicts
-
-If another project already uses ports (for example Loki on `3100`), create a `.env` file in the repository root and override host ports:
-
-```dotenv
-ORDER_SERVICE_PORT=8081
-PAYMENT_SERVICE_PORT=8082
-INVENTORY_SERVICE_PORT=8083
-TEMPO_HTTP_PORT=3210
-TEMPO_OTLP_GRPC_PORT=4327
-TEMPO_OTLP_HTTP_PORT=4328
-LOKI_HTTP_PORT=3110
-```
-
-Then restart:
-
-```powershell
-docker compose down
-docker compose up --build -d
-```
-
-Check running containers:
+Check services:
 
 ```powershell
 docker compose ps
 ```
 
-## Generate trace + logs
-
-Call the order endpoint:
+## Generate traffic manually
 
 ```powershell
-Invoke-RestMethod -Method Post http://localhost:8081/orders/ORD-1001
+Invoke-RestMethod -Method Post http://localhost:18081/orders/ORD-1001
 ```
 
-Expected behavior:
-- One distributed trace across all three services
-- Correlated logs from all services containing `trace_id` and `span_id`
+## Artificial load generation
+
+An automatic load service is included as a Compose profile.
+
+Start with load generation enabled:
+
+```powershell
+docker compose --profile load up -d
+```
+
+Behavior:
+- Sends repeated `POST` requests to `order-service`
+- Request IDs look like `LOAD-<loop>-<batch>`
+- Rate controlled by `.env`:
+	- `LOAD_SLEEP_SECONDS`
+	- `LOAD_BATCH_SIZE`
 
 ## Tempo configuration guide
 
-Config file: `tempo/tempo.yaml`
+File: `tempo/tempo.yaml`
 
-Current key settings:
-- OTLP receiver enabled on gRPC (`4317`) and HTTP (`4318`)
-- Local trace storage at `/tmp/tempo/traces`
-- 24h local retention
+Key settings:
+- OTLP receiver enabled (gRPC + HTTP)
+- Local block storage for traces
+- 24-hour retention for POC
 
-Compose exposure:
-- `3200` query API for Grafana datasource
-- `4317` OTLP gRPC ingest
-- `4318` OTLP HTTP ingest
+Grafana Tempo datasource URL:
+- `http://localhost:3200`
+- Or `http://localhost:${TEMPO_HTTP_PORT}` if overridden
 
 ## Loki configuration guide
 
-Config file: `loki/loki-config.yaml`
+File: `loki/loki-config.yaml`
 
-Current key settings:
-- Single-binary local mode
-- Local filesystem storage under `/loki`
-- TSDB schema (`v13`)
-- No auth (`auth_enabled: false`) for local POC
+Key settings:
+- Single-node local mode
+- Filesystem-backed TSDB
+- No auth for local POC
 
-Compose exposure:
-- `3100` HTTP API for Grafana datasource and Promtail push
+Grafana Loki datasource URL:
+- `http://localhost:3110`
+- Or `http://localhost:${LOKI_HTTP_PORT}` if overridden
 
 ## Promtail configuration guide
 
-Config file: `promtail/promtail-config.yaml`
+File: `promtail/promtail-config.yaml`
 
-Current key settings:
-- Reads Docker JSON log files from `/var/lib/docker/containers/*/*-json.log`
-- Uses `docker` pipeline stage to parse Docker log format
-- Pushes to `http://loki:3100/loki/api/v1/push`
+Key settings:
+- Reads Docker JSON logs
+- Parses Docker log format using `docker` pipeline stage
+- Pushes to Loki at `http://loki:3100/loki/api/v1/push`
 
-## Grafana configuration (Grafana already installed)
+## Prometheus configuration guide
 
-Add 2 data sources:
+File: `prometheus/prometheus.yml`
 
-1) Tempo
+Key settings:
+- Scrape interval: 5s
+- Scrapes all 3 Java services at `/actuator/prometheus`
+
+Prometheus UI:
+- `http://localhost:19090`
+- Or `http://localhost:${PROMETHEUS_PORT}` if overridden
+
+Useful sample PromQL:
+- `up{job=~"order-service|payment-service|inventory-service"}`
+- `rate(http_server_requests_seconds_count[1m])`
+- `jvm_memory_used_bytes`
+
+## Grafana data source configuration
+
+Configure 3 data sources in Grafana:
+
+1. Tempo
 - Type: Tempo
-- URL: `http://localhost:3200` (or your `TEMPO_HTTP_PORT` override)
+- URL: `http://localhost:3200` (or overridden Tempo port)
 
-2) Loki
+2. Loki
 - Type: Loki
-- URL: `http://localhost:3100` (or your `LOKI_HTTP_PORT` override)
+- URL: `http://localhost:3110` (or overridden Loki port)
 
-### Logs to traces linking
+3. Prometheus
+- Type: Prometheus
+- URL: `http://localhost:19090` (or overridden Prometheus port)
 
-In Loki datasource settings, add a Derived field:
+Loki derived field for log-to-trace navigation:
 - Name: `TraceID`
 - Regex: `trace_id=(\w+)`
 - Data source: Tempo
 
-This enables click-through from a log line to the corresponding Tempo trace.
+## Prebuilt dashboard (JSON)
 
-## Suggested analysis workflow (case study)
+Dashboard file included in repo:
+- `grafana/dashboard-observability-poc.json`
+- `grafana/dashboard-order-slo.json`
 
-1. Load generation
-- Trigger several order requests with different IDs.
+Import steps in Grafana:
+1. Open Grafana -> Dashboards -> New -> Import.
+2. Upload `grafana/dashboard-observability-poc.json`.
+3. Map data sources when prompted:
+- `prometheus_ds` -> your Prometheus datasource
+- `loki_ds` -> your Loki datasource
+- `tempo_ds` -> your Tempo datasource
+4. Save dashboard.
 
-```powershell
-1..5 | ForEach-Object { Invoke-RestMethod -Method Post http://localhost:8081/orders/ORD-$_ }
-```
+Dashboard panels include:
+- Request rate by service (Prometheus)
+- HTTP p95 latency by service (Prometheus)
+- JVM heap usage (Prometheus)
+- Service logs with trace IDs (Loki)
+- Recent traces by service (Tempo)
 
-2. Trace analysis in Grafana Tempo
-- Filter by service name `order-service`
-- Open a trace and verify child spans for payment and inventory calls
-- Compare span durations to identify slow downstreams
+Second dashboard (`grafana/dashboard-order-slo.json`) is SLO-focused for `order-service`:
+- Throughput (RPS)
+- Error rate (5xx)
+- Latency p95
+- Availability percentage
+- Order logs and recent traces for fast triage
 
-3. Log analysis in Grafana Loki
-- Query service logs, for example:
-- `{container="order-service"}`
-- `{container="payment-service"}`
-- `{container="inventory-service"}`
-- Find error or slow logs and click `TraceID` derived field to open full distributed trace
+If your Grafana version does not support the `traces` panel type, use Explore with Tempo datasource for trace search and keep the rest of the dashboard panels as-is.
 
-4. Root cause pattern
-- Start from a failed/slow order log in Loki
-- Jump to Tempo trace
-- Identify whether delay/failure occurred in payment or inventory span
+## End-to-end case study workflow
 
-## Useful operational commands
+1. Start stack with load profile.
+2. Open Grafana Explore.
+3. In Tempo, search traces for `order-service`.
+4. Open one trace and inspect spans for payment/inventory downstream calls.
+5. In Loki, filter logs for `order-service`, then click `TraceID` to jump to trace.
+6. In Prometheus, validate request rate and latency metrics during load.
+7. Correlate slow traces with log lines and request-rate spikes.
 
-View logs:
+## Useful commands
 
 ```powershell
 docker compose logs -f order-service
@@ -184,21 +220,11 @@ docker compose logs -f inventory-service
 docker compose logs -f tempo
 docker compose logs -f loki
 docker compose logs -f promtail
+docker compose logs -f prometheus
+docker compose logs -f load-generator
 ```
-
-Stop stack:
 
 ```powershell
 docker compose down
-```
-
-Stop and remove volumes:
-
-```powershell
 docker compose down -v
 ```
-
-## Notes for your Java/Maven setup
-
-- If you run services directly on host later, prefer Maven Wrapper (`mvnw`) over your installed Maven 3.3.9.
-- For Spring Boot 3.x in future, upgrade host to Java 17 and newer Maven.
