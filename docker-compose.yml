@@ -65,6 +65,29 @@ services:
     depends_on:
       - tempo
 
+  load-generator-service:
+    build:
+      context: ./load-generator-service
+    environment:
+      JAVA_TOOL_OPTIONS: >-
+        -javaagent:/otel/opentelemetry-javaagent.jar
+        -Dotel.service.name=load-generator-service
+        -Dotel.resource.attributes=deployment.environment=poc
+        -Dotel.exporter.otlp.endpoint=http://tempo:4317
+        -Dotel.exporter.otlp.protocol=grpc
+        -Dotel.traces.exporter=otlp
+        -Dotel.metrics.exporter=none
+        -Dotel.logs.exporter=none
+        -Dotel.traces.sampler=always_on
+        -Dotel.instrumentation.logback-mdc.enabled=true
+      ORDER_BASE_URL: http://order-service:8081
+      LOAD_DEFAULT_RPS: ${LOAD_DEFAULT_RPS:-2}
+    ports:
+      - "${LOAD_GENERATOR_PORT:-18084}:8084"
+    depends_on:
+      - order-service
+      - tempo
+
   tempo:
     image: grafana/tempo:2.6.0
     command: ["-config.file=/etc/tempo.yaml"]
@@ -106,26 +129,4 @@ services:
       - order-service
       - payment-service
       - inventory-service
-
-  load-generator:
-    image: curlimages/curl:8.8.0
-    profiles: ["load"]
-    environment:
-      LOAD_SLEEP_SECONDS: ${LOAD_SLEEP_SECONDS:-1}
-      LOAD_BATCH_SIZE: ${LOAD_BATCH_SIZE:-2}
-    command:
-      - sh
-      - -c
-      - |
-        i=1
-        while true; do
-          j=1
-          while [ "$j" -le "$LOAD_BATCH_SIZE" ]; do
-            curl -s -X POST "http://order-service:8081/orders/LOAD-$i-$j" > /dev/null || true
-            j=$((j+1))
-          done
-          i=$((i+1))
-          sleep "$LOAD_SLEEP_SECONDS"
-        done
-    depends_on:
-      - order-service
+      - load-generator-service

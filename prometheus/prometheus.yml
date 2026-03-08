@@ -25,3 +25,9 @@ scrape_configs:
     static_configs:
       - targets:
           - inventory-service:8083
+
+  - job_name: load-generator-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - load-generator-service:8084

@@ -26,7 +26,7 @@ This gives you one end-to-end trace that spans all services.
 - `loki`
 - `promtail`
 - `prometheus`
-- `load-generator` (optional profile)
+- `load-generator-service`
 
 ## Metrics emission (all Java services)
 
@@ -39,6 +39,7 @@ Prometheus endpoints:
 - `order-service`: `http://order-service:8081/actuator/prometheus`
 - `payment-service`: `http://payment-service:8082/actuator/prometheus`
 - `inventory-service`: `http://inventory-service:8083/actuator/prometheus`
+- `load-generator-service`: `http://load-generator-service:8084/actuator/prometheus`
 
 Prometheus scrape config file:
 - `prometheus/prometheus.yml`
@@ -53,13 +54,13 @@ Current `.env` defaults in this repo:
 ORDER_SERVICE_PORT=18081
 PAYMENT_SERVICE_PORT=18082
 INVENTORY_SERVICE_PORT=18083
+LOAD_GENERATOR_PORT=18084
 TEMPO_HTTP_PORT=3200
 TEMPO_OTLP_GRPC_PORT=4317
 TEMPO_OTLP_HTTP_PORT=4318
 LOKI_HTTP_PORT=3110
 PROMETHEUS_PORT=19090
-LOAD_SLEEP_SECONDS=1
-LOAD_BATCH_SIZE=2
+LOAD_DEFAULT_RPS=2
 ```
 
 ## Start the stack
@@ -80,22 +81,27 @@ docker compose ps
 Invoke-RestMethod -Method Post http://localhost:18081/orders/ORD-1001
 ```
 
-## Artificial load generation
+## Artificial load generation service
 
-An automatic load service is included as a Compose profile.
+The project now has a dedicated Java microservice: `load-generator-service`.
 
-Start with load generation enabled:
+Load service base URL:
+- `http://localhost:18084` (or `LOAD_GENERATOR_PORT` override)
+
+APIs:
+- Start continuous load: `POST /load/start?rps=5`
+- Stop continuous load: `POST /load/stop`
+- Run burst load: `POST /load/burst?count=200`
+- Check status: `GET /load/status`
+
+Examples:
 
 ```powershell
-docker compose --profile load up -d
+Invoke-RestMethod -Method Post "http://localhost:18084/load/start?rps=5"
+Invoke-RestMethod -Method Get "http://localhost:18084/load/status"
+Invoke-RestMethod -Method Post "http://localhost:18084/load/burst?count=200"
+Invoke-RestMethod -Method Post "http://localhost:18084/load/stop"
 ```
-
-Behavior:
-- Sends repeated `POST` requests to `order-service`
-- Request IDs look like `LOAD-<loop>-<batch>`
-- Rate controlled by `.env`:
-	- `LOAD_SLEEP_SECONDS`
-	- `LOAD_BATCH_SIZE`
 
 ## Tempo configuration guide
 
@@ -138,14 +144,14 @@ File: `prometheus/prometheus.yml`
 
 Key settings:
 - Scrape interval: 5s
-- Scrapes all 3 Java services at `/actuator/prometheus`
+- Scrapes all 4 Java services at `/actuator/prometheus`
 
 Prometheus UI:
 - `http://localhost:19090`
 - Or `http://localhost:${PROMETHEUS_PORT}` if overridden
 
 Useful sample PromQL:
-- `up{job=~"order-service|payment-service|inventory-service"}`
+- `up{job=~"order-service|payment-service|inventory-service|load-generator-service"}`
 - `rate(http_server_requests_seconds_count[1m])`
 - `jvm_memory_used_bytes`
 
@@ -203,7 +209,7 @@ If your Grafana version does not support the `traces` panel type, use Explore wi
 
 ## End-to-end case study workflow
 
-1. Start stack with load profile.
+1. Start stack and trigger continuous load with `load-generator-service`.
 2. Open Grafana Explore.
 3. In Tempo, search traces for `order-service`.
 4. Open one trace and inspect spans for payment/inventory downstream calls.
@@ -221,7 +227,7 @@ docker compose logs -f tempo
 docker compose logs -f loki
 docker compose logs -f promtail
 docker compose logs -f prometheus
-docker compose logs -f load-generator
+docker compose logs -f load-generator-service
 ```
 
 ```powershell
