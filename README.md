@@ -36,10 +36,10 @@ Each service now includes:
 - `management.endpoints.web.exposure.include=health,info,prometheus`
 
 Prometheus endpoints:
-- `order-service`: `http://order-service:8081/actuator/prometheus`
-- `payment-service`: `http://payment-service:8082/actuator/prometheus`
-- `inventory-service`: `http://inventory-service:8083/actuator/prometheus`
-- `load-generator-service`: `http://load-generator-service:8084/actuator/prometheus`
+- `order-service`: `http://98.84.130.190:18081/actuator/prometheus`
+- `payment-service`: `http://98.84.130.190:18082/actuator/prometheus`
+- `inventory-service`: `http://98.84.130.190:18083/actuator/prometheus`
+- `load-generator-service`: `http://98.84.130.190:18084/actuator/prometheus`
 
 Prometheus scrape config file:
 - `prometheus/prometheus.yml`
@@ -144,11 +144,18 @@ File: `prometheus/prometheus.yml`
 
 Key settings:
 - Scrape interval: 5s
-- Scrapes all 4 Java services at `/actuator/prometheus`
+- Scrapes all 4 Java services at `/actuator/prometheus` via VM public IP
+
+Current configured targets in `prometheus/prometheus.yml`:
+- `98.84.130.190:9090` (Prometheus)
+- `98.84.130.190:18081` (order-service)
+- `98.84.130.190:18082` (payment-service)
+- `98.84.130.190:18083` (inventory-service)
+- `98.84.130.190:18084` (load-generator-service)
 
 Prometheus UI:
-- `http://localhost:19090`
-- Or `http://localhost:${PROMETHEUS_PORT}` if overridden
+- `http://98.84.130.190:9090` (VM-hosted Prometheus)
+- For Docker Compose-hosted Prometheus in this repo: `http://localhost:19090`
 
 Useful sample PromQL:
 - `up{job=~"order-service|payment-service|inventory-service|load-generator-service"}`
@@ -169,7 +176,8 @@ Configure 3 data sources in Grafana:
 
 3. Prometheus
 - Type: Prometheus
-- URL: `http://localhost:19090` (or overridden Prometheus port)
+- URL (VM-hosted Prometheus): `http://98.84.130.190:9090`
+- URL (Docker Compose-hosted Prometheus): `http://localhost:19090`
 
 Loki derived field for log-to-trace navigation:
 - Name: `TraceID`
