@@ -29,4 +29,3 @@ query_frontend:
   search:
     duration_slo: 5s
     throughput_bytes_slo: 1073741824
-    metadata_slo: 5s
