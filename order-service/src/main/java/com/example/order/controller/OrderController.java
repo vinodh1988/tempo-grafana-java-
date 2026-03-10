@@ -26,6 +26,11 @@ public class OrderController {
 
   @PostMapping("/{orderId}")
   public ResponseEntity<Map<String, Object>> placeOrder(@PathVariable String orderId) {
+    String normalizedOrderId = orderId.toUpperCase();
+    if (normalizedOrderId.contains("WARN")) {
+      LOGGER.warn("Simulated warning path selected for orderId={}", orderId);
+    }
+
     LOGGER.info("Received place-order request for orderId={}", orderId);
 
     Map<String, Object> paymentResponse = downstreamClient.reservePayment(orderId);

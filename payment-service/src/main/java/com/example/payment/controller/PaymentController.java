@@ -19,11 +19,28 @@ public class PaymentController {
 
   @PostMapping("/{orderId}")
   public ResponseEntity<Map<String, Object>> createPayment(@PathVariable String orderId) {
+    String normalizedOrderId = orderId.toUpperCase();
+
+    if (normalizedOrderId.contains("ERROR")) {
+      LOGGER.error("Simulated payment processing error for orderId={}", orderId);
+
+      Map<String, Object> errorResponse = new LinkedHashMap<>();
+      errorResponse.put("orderId", orderId);
+      errorResponse.put("paymentStatus", "FAILED");
+      errorResponse.put("reason", "Simulated payment error path");
+      errorResponse.put("processedAt", Instant.now().toString());
+      return ResponseEntity.status(500).body(errorResponse);
+    }
+
+    if (normalizedOrderId.contains("WARN")) {
+      LOGGER.warn("Simulated warning during payment for orderId={}", orderId);
+    }
+
     LOGGER.info("Processing payment for orderId={}", orderId);
 
     Map<String, Object> response = new LinkedHashMap<>();
     response.put("orderId", orderId);
-    response.put("paymentStatus", "CONFIRMED");
+    response.put("paymentStatus", normalizedOrderId.contains("WARN") ? "CONFIRMED_WITH_WARNING" : "CONFIRMED");
     response.put("processedAt", Instant.now().toString());
 
     LOGGER.info("Payment completed for orderId={}", orderId);

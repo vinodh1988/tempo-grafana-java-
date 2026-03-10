@@ -19,11 +19,28 @@ public class InventoryController {
 
   @PostMapping("/reserve/{orderId}")
   public ResponseEntity<Map<String, Object>> reserve(@PathVariable String orderId) {
+    String normalizedOrderId = orderId.toUpperCase();
+
+    if (normalizedOrderId.contains("ERROR")) {
+      LOGGER.error("Simulated inventory reservation failure for orderId={}", orderId);
+
+      Map<String, Object> errorResponse = new LinkedHashMap<>();
+      errorResponse.put("orderId", orderId);
+      errorResponse.put("inventoryStatus", "FAILED");
+      errorResponse.put("reason", "Simulated inventory error path");
+      errorResponse.put("processedAt", Instant.now().toString());
+      return ResponseEntity.status(500).body(errorResponse);
+    }
+
+    if (normalizedOrderId.contains("WARN")) {
+      LOGGER.warn("Simulated warning during inventory reservation for orderId={}", orderId);
+    }
+
     LOGGER.info("Reserving stock for orderId={}", orderId);
 
     Map<String, Object> response = new LinkedHashMap<>();
     response.put("orderId", orderId);
-    response.put("inventoryStatus", "RESERVED");
+    response.put("inventoryStatus", normalizedOrderId.contains("WARN") ? "RESERVED_WITH_WARNING" : "RESERVED");
     response.put("processedAt", Instant.now().toString());
 
     LOGGER.info("Inventory reserved for orderId={}", orderId);

@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  prometheus-federation:
+    image: prom/prometheus:v2.54.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./recording-rules.yml:/etc/prometheus/recording-rules.yml:ro
+    ports:
+      - "39090:9090"

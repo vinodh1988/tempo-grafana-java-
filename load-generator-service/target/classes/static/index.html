@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Observability Trigger Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg-grid" aria-hidden="true"></div>
+    <main class="shell">
+      <header class="hero reveal">
+        <p class="eyebrow">One-Click API Runner</p>
+        <h1>Observability Trigger Console</h1>
+        <p>
+          Click a scenario and this app handles request data automatically.
+          It sends both valid and invalid calls so you can produce INFO, WARN,
+          ERROR logs and distributed traces without manual API knowledge.
+        </p>
+      </header>
+
+      <section class="panel reveal" style="--delay: 90ms">
+        <div class="panel-title-row">
+          <h2>Scenario Triggers</h2>
+          <button id="refreshScenarios" class="ghost">Refresh</button>
+        </div>
+        <div id="scenarioButtons" class="button-grid"></div>
+      </section>
+
+      <section class="panel reveal" style="--delay: 160ms">
+        <h2>Load Controls</h2>
+        <div class="controls-row">
+          <label>
+            RPS
+            <input id="rpsInput" type="number" min="1" max="10" value="2" />
+          </label>
+          <button data-action="load-start">Start Continuous</button>
+          <button data-action="load-stop" class="warn">Stop</button>
+        </div>
+        <div class="controls-row">
+          <label>
+            Burst Count
+            <input id="burstInput" type="number" min="1" max="300" value="25" />
+          </label>
+          <button data-action="load-burst">Run Burst</button>
+          <button data-action="load-status" class="ghost">Get Status</button>
+        </div>
+      </section>
+
+      <section class="panel reveal" style="--delay: 230ms">
+        <div class="panel-title-row">
+          <h2>Execution Feed</h2>
+          <button id="clearFeed" class="ghost">Clear</button>
+        </div>
+        <pre id="feed" class="feed" aria-live="polite"></pre>
+      </section>
+    </main>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>

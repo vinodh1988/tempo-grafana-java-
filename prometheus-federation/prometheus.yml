@@ -1,0 +1,39 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+# Federation only pulls selected metrics from upstream Prometheus servers.
+scrape_configs:
+  - job_name: federation-node-1
+    honor_labels: true
+    metrics_path: /federate
+    params:
+      'match[]':
+        - '{__name__=~"up|process_.*|go_.*|prometheus_.*"}'
+        - '{__name__=~"http_server_requests_seconds_.*|jvm_.*|system_cpu_usage"}'
+        - '{job=~"order-service|payment-service|inventory-service|load-generator-service"}'
+    static_configs:
+      - targets:
+          - 35.188.115.81:9090
+        labels:
+          source_cluster: node-1
+
+  - job_name: federation-node-2
+    honor_labels: true
+    metrics_path: /federate
+    params:
+      'match[]':
+        - '{__name__=~"up|process_.*|go_.*|prometheus_.*"}'
+        - '{__name__=~"http_server_requests_seconds_.*|jvm_.*|system_cpu_usage"}'
+        - '{job=~"order-service|payment-service|inventory-service|load-generator-service"}'
+    static_configs:
+      - targets:
+          - 98.84.130.190:9090
+        labels:
+          source_cluster: node-2
+
+rule_files:
+  - recording-rules.yml
+
+# Optional recording rules for quick cross-cluster views.
+# Keep this small for federation setups.

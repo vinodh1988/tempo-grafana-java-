@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: load-generator-service
+
+server:
+  port: 8084
+
+load:
+  order-base-url: ${ORDER_BASE_URL:http://localhost:8081}
+  default-rps: ${LOAD_DEFAULT_RPS:1}
+  max-rps: ${LOAD_MAX_RPS:10}
+  auto-enabled: ${LOAD_AUTO_ENABLED:true}
+  auto-start-delay-ms: ${LOAD_AUTO_START_DELAY_MS:12000}
+  burst-max-count: ${LOAD_BURST_MAX_COUNT:300}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      service: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [trace_id=%X{trace_id:-} span_id=%X{span_id:-}] [%thread] %logger{36} - %msg%n"

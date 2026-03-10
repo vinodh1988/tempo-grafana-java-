@@ -93,6 +93,20 @@ APIs:
 - Stop continuous load: `POST /load/stop`
 - Run burst load: `POST /load/burst?count=200`
 - Check status: `GET /load/status`
+- List click-to-run scenarios: `GET /trigger/scenarios`
+- Run one scenario: `POST /trigger/run?scenario=HAPPY`
+
+Built-in UI:
+- Open `http://localhost:18084/`
+- This page provides one-click buttons for managed scenarios that automatically send valid/invalid inputs.
+- Scenarios generate traces and log patterns for INFO, WARN, and ERROR without users needing to know request payloads.
+
+Available scenarios:
+- `HAPPY`: valid order flow with successful downstream calls (INFO logs + trace)
+- `WARN`: managed warning path (WARN + INFO logs + trace)
+- `ERROR`: managed failure path (ERROR logs + 5xx behavior + trace)
+- `BAD_ROUTE`: intentionally invalid route call to generate client-side failure signals
+- `MIXED`: runs all of the above sequentially
 
 Examples:
 
@@ -101,6 +115,8 @@ Invoke-RestMethod -Method Post "http://localhost:18084/load/start?rps=5"
 Invoke-RestMethod -Method Get "http://localhost:18084/load/status"
 Invoke-RestMethod -Method Post "http://localhost:18084/load/burst?count=200"
 Invoke-RestMethod -Method Post "http://localhost:18084/load/stop"
+Invoke-RestMethod -Method Get "http://localhost:18084/trigger/scenarios"
+Invoke-RestMethod -Method Post "http://localhost:18084/trigger/run?scenario=WARN"
 ```
 
 ## Tempo configuration guide
