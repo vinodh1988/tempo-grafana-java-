@@ -82,6 +82,8 @@ services:
         -Dotel.instrumentation.logback-mdc.enabled=true
       ORDER_BASE_URL: http://order-service:8081
       LOAD_DEFAULT_RPS: ${LOAD_DEFAULT_RPS:-2}
+      LOAD_AUTO_ENABLED: ${LOAD_AUTO_ENABLED:-true}
+      LOAD_AUTO_START_DELAY_MS: ${LOAD_AUTO_START_DELAY_MS:-12000}
     ports:
       - "${LOAD_GENERATOR_PORT:-18084}:8084"
     depends_on:
@@ -113,7 +115,6 @@ services:
     command: ["-config.file=/etc/promtail/promtail-config.yaml"]
     volumes:
       - ./promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - loki

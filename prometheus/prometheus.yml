@@ -6,28 +6,28 @@ scrape_configs:
   - job_name: prometheus
     static_configs:
       - targets:
-          - 98.84.130.190:9090
+          - prometheus:9090
 
   - job_name: order-service
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
-          - 98.84.130.190:18081
+          - order-service:8081
 
   - job_name: payment-service
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
-          - 98.84.130.190:18082
+          - payment-service:8082
 
   - job_name: inventory-service
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
-          - 98.84.130.190:18083
+          - inventory-service:8083
 
   - job_name: load-generator-service
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
-          - 98.84.130.190:18084
+          - load-generator-service:8084
