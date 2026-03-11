@@ -205,6 +205,7 @@ Loki derived field for log-to-trace navigation:
 Dashboard file included in repo:
 - `grafana/dashboard-observability-poc.json`
 - `grafana/dashboard-order-slo.json`
+- `jvm-grafana-dashboard-guide/dashboard-jvm-microservices.json`
 
 Import steps in Grafana:
 1. Open Grafana -> Dashboards -> New -> Import.
@@ -228,6 +229,15 @@ Second dashboard (`grafana/dashboard-order-slo.json`) is SLO-focused for `order-
 - Latency p95
 - Availability percentage
 - Order logs and recent traces for fast triage
+
+Third dashboard (`jvm-grafana-dashboard-guide/dashboard-jvm-microservices.json`) is JVM-focused for all services:
+- Heap/non-heap/metaspace memory views
+- GC pause p95 and GC event rate
+- Thread counts and thread states
+- CPU usage, loaded classes, uptime
+
+Detailed usage notes are in:
+- `jvm-grafana-dashboard-guide/README.md`
 
 If your Grafana version does not support the `traces` panel type, use Explore with Tempo datasource for trace search and keep the rest of the dashboard panels as-is.
 

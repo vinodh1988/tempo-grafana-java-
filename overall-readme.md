@@ -96,6 +96,16 @@ Invoke-RestMethod -Method Post http://localhost:18081/orders/ORD-SMOKE-1
 
 Then inspect `order-service` logs and copy the `trace_id` to correlate.
 
+### 4.4 JVM dashboard for microservices
+
+For JVM-only analysis across `order-service`, `payment-service`, `inventory-service`, and `load-generator-service`, import:
+
+- `jvm-grafana-dashboard-guide/dashboard-jvm-microservices.json`
+
+Guide:
+
+- `jvm-grafana-dashboard-guide/README.md`
+
 ## 5. Verify Logs Are Reaching Loki
 
 ### 5.1 Check Promtail logs
